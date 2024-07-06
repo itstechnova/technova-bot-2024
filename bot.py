@@ -35,5 +35,18 @@ async def on_ready():
 async def hello(ctx):
     await ctx.send(f'Hello, {ctx.author.name}!')
 
+# Verify command
+@bot.command(name='verify')
+async def verify(ctx, email):
+    if not email or email not in users_data:
+        await ctx.send(f'Please enter the email you used to apply for TechNova')
+
+    if email in users_data and not users_data[email]['Verified']:
+        users_data[email]['Verified'] = True
+        # !!! add verified role
+        await ctx.send(f'Hello, {ctx.author.name}! Your verification is successful.')
+    elif email in users_data and users_data[email]['Verified']:
+        await ctx.send(f'Oops, someone has already verified using this email.')
+
 # Run the bot
 bot.run(TOKEN)
