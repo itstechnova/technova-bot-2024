@@ -1,8 +1,10 @@
 import os
 import discord
-from discord.ext import commands
+from discord.ext import tasks, commands
 from dotenv import load_dotenv
 import pandas as pd
+from datetime import datetime, timedelta
+import csv
 
 # Load environment variables
 load_dotenv()
@@ -35,6 +37,30 @@ file_path = "members.csv"
 users_data = load_csv_to_dict(file_path)
 print(users_data)
 
+# List to hold event data
+events = []
+
+# Load events from CSV
+def load_events():
+    global events
+    with open('events.csv', newline='') as csvfile:
+        event_reader = csv.DictReader(csvfile)
+        events = [
+            {
+                'event_name': row['event_name'],
+                'event_time': datetime.strptime(row['event_time'], '%Y-%m-%d %H:%M:%S'),
+                'message': row['message']
+            }
+            for row in event_reader
+        ]
+    # Add a test event that runs immediately for testing
+    test_event = {
+        'event_name': 'Immediate Test Event',
+        'event_time': datetime.now(),
+        'message': 'This is a test event message that runs immediately.'
+    }
+    events.append(test_event)
+
 @bot.event
 async def on_ready():
     for guild in bot.guilds:
@@ -45,6 +71,9 @@ async def on_ready():
         f'{bot.user} is connected to the following guild:\n'
         f'{guild.name}(id: {guild.id})\n'
     )
+
+    load_events()
+    check_events.start()
 
     members = '\n - '.join([member.name for member in guild.members])
     print(f'Guild Members:\n - {members}')
@@ -103,6 +132,17 @@ async def dm_admin(ctx, message):
         print(f"Message sent to {user.name}")
     except Exception as e:
         print(f"Failed to send message: {e}")
+
+# Task to check events and send announcements
+@tasks.loop(seconds=60)  # Check every minute
+async def check_events():
+    now = datetime.now()
+    for event in events:
+        if now >= event['event_time']:
+            channel = bot.get_channel(1265349169317413027)
+            if channel:
+                await channel.send(event['message'])
+            events.remove(event)  # Remove event after announcement
 
 # Run the bot
 bot.run(TOKEN)
